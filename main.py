@@ -3,39 +3,30 @@ from fasthtml.common import *
 app, rt = fast_app(hdrs=(picolink))
 
 
+def input_form():
+    """HTML form for input fields."""
+    return P("Input form")
+
+def image_form():
+    """HTML form for image upload. Updates image preview in the UI."""
+    return P("Image form")
+
+def verify_button():
+    """Button to trigger verification, then display results in the UI"""
+    return P("Verify button")
+
 @rt("/")
 def get():
     return (
-        Socials(
-            title="Vercel + FastHTML",
-            site_name="Vercel",
-            description="A demo of Vercel and FastHTML integration",
-            image="https://vercel.fyi/fasthtml-og",
-            url="https://fasthtml-template.vercel.app",
-            twitter_site="@vercel",
-        ),
-        Container(
-            Card(
-                Group(
-                    P(
-                        "FastHTML is a new next-generation web framework for fast, scalable web applications with minimal, compact code. It builds on top of popular foundations like ASGI and HTMX. You can now deploy FastHTML with Vercel CLI or by pushing new changes to your git repository.",
-                    ),
-                ),
-                header=(Titled("FastHTML + Vercel")),
-                footer=(
-                    P(
-                        A(
-                            "Deploy your own",
-                            href="https://vercel.com/templates/python/fasthtml-python-boilerplate",
-                        ),
-                        " or ",
-                        A("learn more", href="https://docs.fastht.ml/"),
-                        "about FastHTML.",
-                    )
-                ),
-            ),
-        ),
+        input_form(),
+        image_form(),
+        verify_button(),
     )
 
+
+@rt("/verify")
+def post():
+    """OCR the image and verify the input form against the OCR text, then display results."""
+    pass
 
 serve()
