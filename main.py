@@ -1,14 +1,19 @@
 from base64 import b64encode
 from fasthtml.common import *
+from fasthtml.common import Div
 from typing import Any
+import json
+import logging
 
 from ocr_service import LabelOCRService
+from verification import VerificationInput, verify_all
 
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 ocr_service = LabelOCRService()
 
 app, rt = fast_app(hdrs=(picolink,))
-
 
 def hero_section() -> Div:
     return Div(
@@ -18,7 +23,7 @@ def hero_section() -> Div:
     )
 
 
-def input_fields_section(form_data: dict[str, str] | None = None) -> Div:
+def input_fields_section(form_data: dict[str, str] | None = None):
     form_data = form_data or {}
     return Div(
         H3("Product details"),
@@ -29,14 +34,14 @@ def input_fields_section(form_data: dict[str, str] | None = None) -> Div:
                 "Alcohol by volume (%)",
                 Input(name="abv", value=form_data.get("abv", ""), type="number", step="0.1", placeholder="e.g., 13.5")
             ),
-            Label("Volume (mL)", Input(name="volume_ml", value=form_data.get("volume_ml", ""), type="number", step="1", placeholder="e.g., 750")),
+            Label("Volume", Input(name="volume", value=form_data.get("volume", ""), placeholder="e.g., 750 ml, 12 fl oz, etc.")),
             cls="stack"
         ),
         cls="card stack"
     )
 
 
-def image_upload_section() -> Div:
+def image_upload_section():
     return Div(
         H3("Label image"),
         Label(
@@ -91,14 +96,14 @@ def results_section(results: str | None = None, error: str | None = None, **attr
 def layout(
     ocr_text: str | None = None,
     error: str | None = None,
-    form_data: dict[str, str] | None = None,
+    form_data_prefill: dict[str, str] | None = None,
 ) -> Div:
     return Div(
         hero_section(),
         Div(
             Div(
                 Form(
-                    input_fields_section(form_data=form_data),
+                    input_fields_section(form_data=form_data_prefill),
                     image_upload_section(),
                     Button("Verify label", type="submit"),
                     action="/verify",
@@ -128,54 +133,6 @@ def get():
     return layout()
 
 
-@rt("/verify")
-async def verify(
-    label_image: UploadFile | None = None,
-    brand_name: str = "",
-    product_name: str = "",
-    abv: str = "",
-    volume_ml: str = "",
-    gov_warning: str = "",
-    notes: str = "",
-):
-    """OCR the image and display the extracted text."""
-    form_data = {
-        "brand_name": brand_name,
-        "product_name": product_name,
-        "abv": abv,
-        "volume_ml": volume_ml,
-        "gov_warning": gov_warning,
-        "notes": notes,
-    }
-
-    if not label_image:
-        return (
-            results_section(error="Please upload a label image.")
-        )
-
-    content = await label_image.read()
-    if not content:
-        return (
-            results_section(error="Uploaded file was empty.")
-        )
-
-    try:
-        ocr_text = ocr_service.extract_text_from_image(content)
-    except Exception as exc:
-        return (
-            results_section(error=f"OCR failed: {exc}")
-        )
-
-    if not ocr_text:
-        return (
-            results_section(error="No text detected in the uploaded image.")
-        )
-
-    return (
-        results_section(results=ocr_text)
-    )
-
-
 @rt("/preview")
 async def preview(label_image: UploadFile | None = None):
     """HTMX endpoint to render an image preview when a file is selected."""
@@ -198,6 +155,47 @@ async def preview(label_image: UploadFile | None = None):
     return Div(
         Img(src=data_url, cls="preview-img", style="max-width:100%; height:auto;"),
         results_section(hx_swap_oob="true"),
+    )
+
+
+@rt("/verify")
+async def verify(
+    label_image: UploadFile | None = None,
+    brand_name: str = "",
+    product_name: str = "",
+    abv: str = "",
+    volume: str = ""
+):
+    """OCR the image and display the extracted text."""
+    
+    if not label_image:
+        return results_section(error="Please upload a label image.")
+
+    content = await label_image.read()
+    if not content:
+        return results_section(error="Uploaded file was empty.")
+
+    try:
+        logger.info("Calling OCR")
+        ocr_text = ocr_service.extract_text_from_image(content)
+        logger.info(f"OCR text: {ocr_text}")
+    except Exception as exc:
+        return results_section(error=f"OCR failed: {exc}")
+
+    if not ocr_text:
+        return results_section(error="No text detected in the uploaded image.")
+
+    form_input = VerificationInput(brand_name=brand_name, product_name=product_name, abv=abv, volume=volume)
+    logger.info(f"Checking input: {form_input}")
+    verification_results = verify_all(form_input, ocr_text)
+    logger.info(f"Verification results: {verification_results}")
+
+    results_text = "\n".join(
+        [f"{key}: {result.match} - {result.expected} -> {result.found} - {result.comment}" for key, result in verification_results.items()]
+    )
+
+    return (
+        results_section(results=results_text)
     )
 
 
