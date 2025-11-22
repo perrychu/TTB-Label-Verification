@@ -6,14 +6,18 @@ import json
 import logging
 
 from ocr_service import LabelOCRService
-from verification import VerificationInput, verify_all
+from verification import VerificationInput, VerificationResult, verify_all
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
 ocr_service = LabelOCRService()
 
 app, rt = fast_app(hdrs=(picolink,))
+
+def format_newlines(text:str) -> FT:
+    return Div(P(line) for line in text.split("\n"))
+
 
 def hero_section() -> Div:
     return Div(
@@ -41,7 +45,7 @@ def input_fields_section(form_data: dict[str, str] | None = None):
     )
 
 
-def image_upload_section():
+def image_upload_section() -> FT:
     return Div(
         H3("Label image"),
         Label(
@@ -63,7 +67,7 @@ def image_upload_section():
     )
 
 
-def image_preview_section() -> Div:
+def image_preview_section() -> FT:
     return Div(
         H3("Label preview"),
         Div(
@@ -75,29 +79,85 @@ def image_preview_section() -> Div:
     )
 
 
-def results_section(results: str | None = None, error: str | None = None, **attrs: Any) -> Div:
-    content = []
+def results_section(content: FT | None = None, error: str | None = None, **attrs: Any) -> FT:
     if error:
-        content.append(P(f"Error: {error}", cls="error"))
-    elif results:
-        content.append(Pre(results, cls="ocr-text"))
+        content=P(f"Error: {error}", cls="error")
+    elif content:
+        content = content
     else:
-        content.append(P("Results will appear here after you verify a label."))
+        content=P("Results will appear here after you verify a label.")
 
     return Div(
         H3("Verification results"),
-        *content,
+        content,
         id="results-container",
         cls="card stack",
         **attrs,
     )
 
 
+def verification_results_detail(results: dict[str, VerificationResult]) -> Div:
+    """
+    Render verification results as a styled table matching project guidelines.
+    
+    Args:
+        results: Dictionary mapping field names to VerificationResult objects
+        
+    Returns:
+        FastHTML Div containing formatted verification results
+    """
+
+    mismatches = sum(1 for result in results.values() if not result.match)
+
+    if mismatches == 0:
+        result_title = "✅ Success! Label fully matches the inputs."
+    else:
+        result_title = f"❌ Error: {mismatches} of {len(results)} fields don't match."
+    
+    detail_rows = []
+
+    for key, result in results.items():
+        field_name = key.replace("_", " ").title()
+        icon = "✅" if result.match else "❌"
+
+        detail_rows.append(
+            Tr(
+                Th(field_name, scope="row"),
+                Td(format_newlines(result.expected)),
+                Td(icon),
+                Td(format_newlines(f"{result.comment} {result.found if result.comment=="Normalized text match" else ""}")),
+                cls=f"check-item"
+            )
+        )
+
+    return Div(
+        H4(result_title),
+        Table(
+            Thead(
+                Tr(
+                    Th("Field", scope="col"),
+                    Th("Form input", scope="col"),
+                    Th("Found in label?", scope="col"),
+                    Th("Comment", scope="col"),
+                )
+            ),
+            Tbody(*detail_rows),
+        ),
+    )
+
 def layout(
     ocr_text: str | None = None,
     error: str | None = None,
     form_data_prefill: dict[str, str] | None = None,
 ) -> Div:
+
+    form_data_prefill = {
+        "brand_name": "12345 Distillery",
+        "product_name": "Coconut Rum",
+        "abv": "18",
+        "volume": "750 ml",
+    }
+
     return Div(
         hero_section(),
         Div(
@@ -119,7 +179,7 @@ def layout(
             ),
             Div(
                 image_preview_section(),
-                results_section(results=ocr_text, error=error),
+                results_section(results=[P(ocr_text)] if ocr_text else None, error=error),
                 cls="column"
             ),
             cls="grid"
@@ -190,12 +250,10 @@ async def verify(
     verification_results = verify_all(form_input, ocr_text)
     logger.info(f"Verification results: {verification_results}")
 
-    results_text = "\n".join(
-        [f"{key}: {result.match} - {result.expected} -> {result.found} - {result.comment}" for key, result in verification_results.items()]
-    )
+    results_detail = verification_results_detail(verification_results)
 
     return (
-        results_section(results=results_text)
+        results_section(content=results_detail)
     )
 
 
