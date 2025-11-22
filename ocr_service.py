@@ -36,7 +36,7 @@ class LabelOCRService:
 
         raise ValueError(f"No credentials found in {credentials_json_env} or {credentials_path}")
 
-    def extract_text_from_file(self, file_path: str) -> str:
+    def extract_text_from_file(self, file_path: str) -> str | None:
         """Extract text from a file."""
         with open(file_path, "rb") as f:
             return self.extract_text_from_image(f.read())
@@ -52,5 +52,9 @@ class LabelOCRService:
         if response.error and response.error.message:
             raise RuntimeError(f"Vision API error: {response.error.message}")
 
+        annotations = response.text_annotations
+        if not annotations:
+            return None
+
         # First entry contains the full text; others are per-segment.
-        return response.text_annotations[0].description.strip()
+        return annotations[0].description.strip()
