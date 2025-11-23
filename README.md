@@ -17,6 +17,24 @@ FastHTML web application that recreates a simplified Alcohol and Tobacco Tax and
 2. **Provide Google Vision credentials**
    Setup a Google cloud project, create service account with access to Cloud Vision API (e.g. assign `Cloud Vision AI Service Agent` role), and generate a credentials JSON. [Google instructions](https://docs.cloud.google.com/vision/docs/setup)
 
+   Credentials JSON will look something like:
+   ```
+   {
+   "type": "service_account",
+   "project_id": "<project name>",
+   "private_key_id": "<alphanumeric id>",
+   "private_key": "...",
+   "client_email": "<project email>",
+   "client_id": "<numeric id>",
+   "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+   "token_uri": "https://oauth2.googleapis.com/token",
+   "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+   "client_x509_cert_url": "<url associated with project>",
+   "universe_domain": "googleapis.com"
+   }
+
+   ```
+
    Then, make credentials available locally, either:
    - Set an environment variable `GOOGLE_APPLICATION_CREDENTIALS_JSON` to the credentials json content
    - Save the credentials JSON as a file `GOOGLE_APPLICATION_CREDENTIALS.json` at the project root
@@ -33,7 +51,15 @@ FastHTML web application that recreates a simplified Alcohol and Tobacco Tax and
 4. **Verify fields** – `verify_all` normalizes OCR output, cascades through exact/normalized/fuzzy comparisons, and records match details for each input field plus the government warning text.
 5. **Report back** – HTMX swaps the result panel with a table that outlines match success/fail and includes commentary (e.g., closest fuzzy match when a field fails).
 
-## Key Files
+## Testing
+Basic unit test are in `tests/`
+
+Run with
+```
+python -m pytest tests/
+```
+
+## Files
 | File | Purpose |
 | --- | --- |
 | `main.py` | FastHTML routes, HTMX interactions, and UI building blocks. |
@@ -41,3 +67,4 @@ FastHTML web application that recreates a simplified Alcohol and Tobacco Tax and
 | `verification.py` | VerificationInput dataclass, normalization utilities, per-field validators, and overall orchestration. |
 | `Examples/` | Example label images from `ttb.gov` used for manual testing |
 | `static/` |  US web design system files for UI formatting |
+| `tests/` | Unit tests |

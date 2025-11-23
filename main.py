@@ -360,5 +360,5 @@ async def verify(
         results_section(content=results_detail)
     )
 
-
-serve()
+if __name__ == "__main__":
+    serve()

@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from functools import partial
 import logging
 
 from rapidfuzz import fuzz, process
@@ -29,8 +30,8 @@ def normalize_text(text:str) -> str:
         Lowercase string where punctuation becomes single spaces and whitespace is collapsed.
     """
     text = text.strip().lower()
-    text = regex.sub(r"[.,\-()_\[\]]", " ", text) # Replace punctuation with single space
-    text = regex.sub(r"\s+", " ", text) # Replace multiple spaces with a single space
+    text = regex.sub(r"[!.,;:/_\-()\[\]]", " ", text) # Replace punctuation with single space
+    text = regex.sub(r"\s+", " ", text).strip() # Replace multiple spaces with a single space
     return text
 
 
@@ -125,12 +126,13 @@ def check_normalized(target_text:str, source_text:str) -> VerificationResult:
     )
 
 
-def check_fuzzy(target_text:str, source_text:str) -> VerificationResult:
+def check_fuzzy(target_text:str, source_text:str, allow_fuzzy:bool = True) -> VerificationResult:
     """Compare fuzzy matching similarity against token-based substrings.
 
     Args:
         target_text: Text entered by the user.
         source_text: Full OCR text to search through.
+        allow_fuzzy: Whether to allow fuzzy matching (if not, calculate ratio but set match=False)
 
     Returns:
         VerificationResult detailing the best fuzzy score and match decision.
@@ -151,7 +153,7 @@ def check_fuzzy(target_text:str, source_text:str) -> VerificationResult:
         limit=1,
         scorer=fuzz.ratio)[0]
     best_ratio = round(best_ratio, 1)
-    match = best_ratio >= 92
+    match = best_ratio >= 92 and allow_fuzzy
 
     return VerificationResult(
         match=match,
@@ -160,12 +162,13 @@ def check_fuzzy(target_text:str, source_text:str) -> VerificationResult:
     )
 
 
-def check_matches_cascade(target_text:str, source_text:str) -> VerificationResult:
+def check_matches_cascade(target_text:str, source_text:str, allow_fuzzy:bool = True) -> VerificationResult:
     """Run increasingly fuzzy strategies until a match is found or all fail.
 
     Args:
         target_text: Text entered by the user.
         source_text: Full OCR text to search through.
+        allow_fuzzy: Whether to allow fuzzy matching.
 
     Returns:
         VerificationResult from the best successful strategy, or no match
@@ -178,11 +181,17 @@ def check_matches_cascade(target_text:str, source_text:str) -> VerificationResul
             comment="Target text is empty"
         )
     
-    for check_func in [check_exact, check_normalized, check_fuzzy]:
+    for i, check_func in enumerate(
+        [
+            check_exact, 
+            check_normalized, 
+            partial(check_fuzzy, allow_fuzzy=allow_fuzzy)
+        ],
+    ):
         result = check_func(target_text, source_text)
-        if result.match:
+        if result.match and (allow_fuzzy or i < 2):
             return result
-    
+
     return result
 
 
@@ -222,7 +231,7 @@ def verify_abv(expected:str, ocr_text:str) -> VerificationResult:
     Returns:
         VerificationResult describing the match status for the ABV field.
     """
-    result = check_matches_cascade(f"{expected}%", ocr_text)
+    result = check_matches_cascade(f"{expected}%", ocr_text, allow_fuzzy=False)
     return result
 
 def verify_volume(expected:str, ocr_text:str) -> VerificationResult:
@@ -235,7 +244,7 @@ def verify_volume(expected:str, ocr_text:str) -> VerificationResult:
     Returns:
         VerificationResult describing the match status for the volume field.
     """
-    result = check_matches_cascade(expected, ocr_text)
+    result = check_matches_cascade(expected, ocr_text, allow_fuzzy=False)
     return result
 
 def verify_gov_warning(ocr_text:str) -> VerificationResult:
@@ -253,9 +262,9 @@ def verify_gov_warning(ocr_text:str) -> VerificationResult:
     pregnancy_text = "According to the Surgeon General, women should not drink alcoholic beverages during pregnancy because of the risk of birth defects" 
     drive_health_text = "Consumption of alcoholic beverages impairs your ability to drive a car or operate machinery, and may cause health problems"
 
-    title_result = check_matches_cascade(title_text, ocr_text)
-    pregnancy_result = check_matches_cascade(pregnancy_text, ocr_text)
-    drive_health_result = check_matches_cascade(drive_health_text, ocr_text)
+    title_result = check_matches_cascade(title_text, ocr_text, allow_fuzzy=False)
+    pregnancy_result = check_matches_cascade(pregnancy_text, ocr_text, allow_fuzzy=False)
+    drive_health_result = check_matches_cascade(drive_health_text, ocr_text, allow_fuzzy=False)
 
     results = [title_result, pregnancy_result, drive_health_result]
 
