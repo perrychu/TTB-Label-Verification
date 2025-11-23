@@ -2,10 +2,10 @@
 
 FastHTML web application that recreates a simplified Alcohol and Tobacco Tax and Trade Bureau (TTB) label review. Users submit the expected label fields and an image, the backend runs OCR through Google Cloud Vision, and the app reports where the label agrees or diverges from the submission.
 
-## Feature Highlights
-- **Rich comparison strategy** – 3-tier matching strategy with match reasoning feedback enabling users to quickly & transparently evaluate output quality. Tier 1 is exact text match; Tier 2 is normalized match adjusting for capitalization, punctuation, and spacing variation; Tier 3 is fuzzy match. Best fuzzy match score and substring are shown as additional user context for Tier 3 matches and no-match. All matching strategies incorporate word boundaries to avoid spurious partial-token matches.
+## Highlights
+- **Comparison strategy** – 3-tier matching strategy with feedback enabling users to quickly & transparently evaluate output quality. Tier 1 is exact text match; Tier 2 is normalized match adjusting for capitalization, punctuation, and spacing variation; Tier 3 is fuzzy match. Best fuzzy match score and substring are shown as additional context for Tier 3 matches and non-matches. All matching strategies incorporate word boundaries to avoid spurious partial-token matches.
 - **User-friendly UX** – FastHTML + USWDS styles keep the layout simple; HTMX endpoints (`/preview`, `/verify`) avoid full page reloads. Outputs formatted to be easily interpretable.
-- **Government warning coverage** – Validates presence of the heading and statutory paragraphs individually to handle varying formatting.
+- **Extras** – Government Warning text is validated separately for heading and statutory paragraphs to handle varying formatting. Includes basic unit tests to verify logic / prevent regressions.
 
 ## Local Setup
 1. **Install dependencies in virtual environment**
@@ -14,7 +14,7 @@ FastHTML web application that recreates a simplified Alcohol and Tobacco Tax and
    source .venv/bin/activate
    pip install -r requirements.txt
    ```
-2. **Provide Google Vision credentials**
+2. **Provide Google Vision Credentials**
    Setup a Google cloud project, create service account with access to Cloud Vision API (e.g. assign `Cloud Vision AI Service Agent` role), and generate a credentials JSON. [Google instructions](https://docs.cloud.google.com/vision/docs/setup)
 
    Credentials JSON will look something like:
@@ -32,7 +32,6 @@ FastHTML web application that recreates a simplified Alcohol and Tobacco Tax and
    "client_x509_cert_url": "<url associated with project>",
    "universe_domain": "googleapis.com"
    }
-
    ```
 
    Then, make credentials available locally, either:
@@ -51,7 +50,7 @@ FastHTML web application that recreates a simplified Alcohol and Tobacco Tax and
 4. **Verify fields** – `verify_all` normalizes OCR output, cascades through exact/normalized/fuzzy comparisons, and records match details for each input field plus the government warning text.
 5. **Report back** – HTMX swaps the result panel with a table that outlines match success/fail and includes commentary (e.g., closest fuzzy match when a field fails).
 
-## Testing
+## Running Tests
 Basic unit test are in `tests/`
 
 Run with
