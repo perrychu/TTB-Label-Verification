@@ -13,7 +13,7 @@ class LabelOCRService:
     def __init__(
         self,
         credentials_env_var: str = "GOOGLE_APPLICATION_CREDENTIALS_JSON",
-        credentials_path: str = "GOOGLE_AUTH_VISION.json",
+        credentials_path: str = "GOOGLE_APPLICATION_CREDENTIALS.json",
     ):
         credentials = self._load_credentials(credentials_env_var, credentials_path)
         if credentials:
