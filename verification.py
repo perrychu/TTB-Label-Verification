@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class VerificationInput:
     brand_name: str
-    product_name: str
+    product_type: str
     abv: str
     volume: str
 
@@ -280,14 +280,14 @@ def verify_all(input_data: VerificationInput, ocr_text:str) -> dict[str, Verific
     ocr_text_norm = normalize_text(ocr_text)
 
     brand_name_result = verify_brand(input_data.brand_name, ocr_text_norm)
-    product_name_result = verify_product_type(input_data.product_name, ocr_text_norm)
+    product_type_result = verify_product_type(input_data.product_type, ocr_text_norm)
     abv_result = verify_abv(input_data.abv, ocr_text_norm)
     volume_result = verify_volume(input_data.volume, ocr_text_norm)
     gov_warning_result = verify_gov_warning(ocr_text_norm)
 
     return {
         "brand_name": brand_name_result,
-        "product_name": product_name_result,
+        "product_type": product_type_result,
         "abv": abv_result,
         "volume": volume_result,
         "warning": gov_warning_result,

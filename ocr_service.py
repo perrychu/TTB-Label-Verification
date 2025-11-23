@@ -15,6 +15,15 @@ class LabelOCRService:
         credentials_env_var: str = "GOOGLE_APPLICATION_CREDENTIALS_JSON",
         credentials_path: str = "GOOGLE_APPLICATION_CREDENTIALS.json",
     ):
+        """Initialize the OCR client with optional credential overrides.
+
+        Args:
+            credentials_env_var: Environment variable that may contain JSON credentials.
+            credentials_path: Path to a service account file used when the env var is absent.
+
+        Returns:
+            None. Sets up `self.client` for downstream OCR calls.
+        """
         credentials = self._load_credentials(credentials_env_var, credentials_path)
         if credentials:
             self.client = vision.ImageAnnotatorClient(credentials=credentials)
@@ -24,6 +33,18 @@ class LabelOCRService:
     def _load_credentials(
         self, credentials_json_env: str, credentials_file_path: str
     ) -> Optional[service_account.Credentials]:
+        """Construct service-account credentials from JSON env var or a file.
+
+        Args:
+            credentials_json_env: Environment variable to inspect for embedded JSON.
+            credentials_file_path: Filesystem path to a service account JSON file fallback.
+
+        Returns:
+            Instantiated `Credentials` object if created 
+            
+        Raises:
+            ValueError: If no credentials source is available.
+        """
         json_env_value = os.getenv(credentials_json_env)
         if json_env_value:
             try:
@@ -38,13 +59,27 @@ class LabelOCRService:
         raise ValueError(f"No credentials found in {credentials_json_env} or {credentials_path}")
 
     def extract_text_from_file(self, file_path: str) -> str | None:
-        """Extract text from a file."""
+        """Load an image from disk and run OCR on its bytes.
+
+        Args:
+            file_path: Absolute or relative path to an image file.
+
+        Returns:
+            Detected text string or None when OCR finds no content.
+        """
         with open(file_path, "rb") as f:
             return self.extract_text_from_image(f.read())
     
     @lru_cache(maxsize=100)
     def extract_text_from_image(self, image_bytes: bytes) -> str | None:
-        """Run OCR on an image and return the full detected text."""
+        """Call Google Vision to detect text directly from image bytes.
+
+        Args:
+            image_bytes: Raw image data in memory.
+
+        Returns:
+            Detected text string or None when nothing is detected.
+        """
         if not image_bytes:
             return None
 

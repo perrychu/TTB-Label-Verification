@@ -19,17 +19,41 @@ ocr_service = LabelOCRService()
 
 
 def format_newlines(text:str) -> FT:
+    """Convert text block with newlines to html format (stacked paragraph tags).
+
+    Args:
+        text: Plain string with newline separators.
+
+    Returns:
+        FastHTML Div element containing each line in its own paragraph.
+    """
     return Div(P(line) for line in text.split("\n"))
 
 
 def title_section() -> FT:
+    """Build html for the title and description section.
+
+    Args:
+        None.
+
+    Returns:
+        FastHTML Div element with heading and helper text.
+    """
     return Div(
         H1("Alcohol Label Verification"),
-        P("Upload a label image and enter the expected details to verify compliance.", cls="usa-hint"),
+        P("Upload a label image and enter the expected details to verify compliance. All fields are required.", cls="usa-hint"),
     )
 
 
 def input_fields_section(form_data: dict[str, str] | None = None):
+    """Build html for input form of label text to be verified.
+
+    Args:
+        form_data: Optional prefills for the label fields.
+
+    Returns:
+        FastHTML Div containing the labeled input controls.
+    """
     form_data = form_data or {}
     return Div(
         H2("Fields to verify"),
@@ -44,14 +68,16 @@ def input_fields_section(form_data: dict[str, str] | None = None):
                     id="brand_name_input",
                     value=form_data.get("brand_name", ""),
                     placeholder="e.g., Riverbend Winery",
+                    required=True,
                     cls="usa-input"
             ),
             Label(
-                "Product name / class",
+                "Product type / class",
                 Input(
-                    name="product_name",
-                    value=form_data.get("product_name", ""),
+                    name="product_type",
+                    value=form_data.get("product_type", ""),
                     placeholder="e.g., Cabernet Sauvignon",
+                    required=True,
                     cls="usa-input"
                 ),
                 cls="usa-label"
@@ -63,6 +89,7 @@ def input_fields_section(form_data: dict[str, str] | None = None):
                     value=form_data.get("abv", ""),
                     type="number", step="0.1",
                     placeholder="e.g., 13.5",
+                    required=True,
                     cls="usa-input"
                 ),
                 cls="usa-label"
@@ -73,6 +100,7 @@ def input_fields_section(form_data: dict[str, str] | None = None):
                     name="volume",
                     value=form_data.get("volume", ""),
                     placeholder="e.g., 750 ml, 12 fl oz, etc.",
+                    required=True,
                     cls="usa-input"
                 ),
                 cls="usa-label"
@@ -83,6 +111,12 @@ def input_fields_section(form_data: dict[str, str] | None = None):
 
 
 def image_upload_section() -> FT:
+    """Build html for the label image upload input. Element includes HTMX
+    to update the preview container when an image is uploaded.
+
+    Returns:
+        FastHTML Div containing the file input with HTMX hooks.
+    """
     return Div(
         H2("Label"),
         Label(
@@ -106,6 +140,11 @@ def image_upload_section() -> FT:
 
 
 def image_preview_section() -> FT:
+    """Build html for a placeholder container to show a preview of the uploaded label.
+
+    Returns:
+        FastHTML Div that holds the preview placeholder and target container.
+    """
     return Div(
         H2("Label preview"),
         Div(
@@ -116,6 +155,16 @@ def image_preview_section() -> FT:
 
 
 def results_section(content: FT | None = None, error: str | None = None, **attrs: Any) -> FT:
+    """Build html for the results container, optionally showing error or custom content.
+
+    Args:
+        content: FastHTML fragment to render inside the section when available.
+        error: Error message to display if error occurs before validation.
+        **attrs: Additional attributes forwarded to the results Div.
+
+    Returns:
+        FastHTML Div ready to slot into the layout or respond to HTMX swaps.
+    """
     if error:
         content=P(f"Error: {error}", cls="error")
     elif content:
@@ -132,14 +181,13 @@ def results_section(content: FT | None = None, error: str | None = None, **attrs
 
 
 def verification_results_detail(results: dict[str, VerificationResult]) -> FT:
-    """
-    Render verification results as a styled table matching project guidelines.
-    
+    """Build html fragment to show a summary of verification results.
+
     Args:
-        results: Dictionary mapping field names to VerificationResult objects
-        
+        results: Mapping of field names to their VerificationResult objects.
+
     Returns:
-        FastHTML Div containing formatted verification results
+        FastHTML Div element with summary text and a results table.
     """
 
     mismatches = sum(1 for result in results.values() if not result.match)
@@ -181,18 +229,25 @@ def verification_results_detail(results: dict[str, VerificationResult]) -> FT:
         ),
     )
 
-def layout(
+
+@rt("/")
+def get(
     ocr_text: str | None = None,
     error: str | None = None,
     form_data_prefill: dict[str, str] | None = None,
 ) -> FT:
+    """Compose the entire page layout including form, preview, and results areas.
+    Includes HTMX to update the results container when the user clicks to submit
+    the verification request.
 
-    form_data_prefill = {
-        "brand_name": "12345 Distillery",
-        "product_name": "Coconut Rum",
-        "abv": "18",
-        "volume": "750 ml",
-    }
+    Args:
+        ocr_text: Optional OCR output to display in the initial results pane.
+        error: Optional error message to surface immediately.
+        form_data_prefill: Prefill values for the verification form inputs.
+
+    Returns:
+        FastHTML Body object representing the full UI.
+    """
 
     return Body(
         title_section(),
@@ -221,18 +276,19 @@ def layout(
         ),
         Script(src="static/js/uswds.min.js"),
         cls="grid-container",
-        style="margin: 10px;"
     )
-
-
-@rt("/")
-def get():
-    return layout()
 
 
 @rt("/preview")
 async def preview(label_image: UploadFile | None = None):
-    """HTMX endpoint to render an image preview when a file is selected."""
+    """Build html for the preview of the uploaded label image.
+
+    Args:
+        label_image: UploadFile provided by HTMX when the user selects an image.
+
+    Returns:
+        FastHTML Div updating the preview container and resetting results.
+    """
     if not label_image:
         return Div(
             Span("Preview will display after a label image is selected.", id="preview-placeholder"),
@@ -259,11 +315,22 @@ async def preview(label_image: UploadFile | None = None):
 async def verify(
     label_image: UploadFile | None = None,
     brand_name: str = "",
-    product_name: str = "",
+    product_type: str = "",
     abv: str = "",
     volume: str = ""
 ):
-    """OCR the image and display the extracted text."""
+    """Run OCR on the uploaded label and build html for the verification results.
+
+    Args:
+        label_image: Uploaded image to be processed by the OCR service.
+        brand_name: Expected brand name provided by the user.
+        product_type: Expected product class provided by the user.
+        abv: Expected ABV value provided by the user.
+        volume: Expected container volume provided by the user.
+
+    Returns:
+        FastHTML Div showing verification success, mismatches, or errors.
+    """
     
     if not label_image:
         return results_section(error="Please upload a label image.")
@@ -282,7 +349,7 @@ async def verify(
     if not ocr_text:
         return results_section(error="No text detected in the uploaded image.")
 
-    form_input = VerificationInput(brand_name=brand_name, product_name=product_name, abv=abv, volume=volume)
+    form_input = VerificationInput(brand_name=brand_name, product_type=product_type, abv=abv, volume=volume)
     logger.info(f"Checking input: {form_input}")
     verification_results = verify_all(form_input, ocr_text)
     logger.info(f"Verification results: {verification_results}")
