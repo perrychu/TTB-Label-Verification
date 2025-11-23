@@ -1,0 +1,23 @@
+{
+  "name": "ttb-label-verification",
+  "version": "1.0.0",
+  "description": "Prototype for validating alcohol labels with OCR",
+  "homepage": "https://github.com/perrychu/TTB-Label-Verification#readme",
+  "bugs": {
+    "url": "https://github.com/perrychu/TTB-Label-Verification/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/perrychu/TTB-Label-Verification.git"
+  },
+  "license": "ISC",
+  "author": "",
+  "type": "commonjs",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "@uswds/uswds": "3.13.0"
+  }
+}
