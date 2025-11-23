@@ -11,8 +11,8 @@ logger = logging.getLogger(__name__)
 app, rt = fast_app(
     pico=False,
     hdrs=(
-        Script(src="node_modules/@uswds/uswds/dist/js/uswds-init.min.js"),
-        Link(rel="stylesheet", href="node_modules/@uswds/uswds/dist/css/uswds.min.css", type='text/css'),
+        Script(src="static/js/uswds-init.min.js"),
+        Link(rel="stylesheet", href="static/css/uswds.min.css", type='text/css'),
     ),
 )
 ocr_service = LabelOCRService()
@@ -219,7 +219,7 @@ def layout(
             ),
             cls="grid grid-row grid-gap"
         ),
-        Script(src="node_modules/@uswds/uswds/dist/js/uswds.min.js"),
+        Script(src="static/js/uswds.min.js"),
         cls="grid-container",
         style="margin: 10px;"
     )
