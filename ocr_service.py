@@ -1,3 +1,4 @@
+from functools import lru_cache
 import json
 import os
 from typing import Optional
@@ -41,6 +42,7 @@ class LabelOCRService:
         with open(file_path, "rb") as f:
             return self.extract_text_from_image(f.read())
     
+    @lru_cache(maxsize=100)
     def extract_text_from_image(self, image_bytes: bytes) -> str | None:
         """Run OCR on an image and return the full detected text."""
         if not image_bytes:
