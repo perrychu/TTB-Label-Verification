@@ -1,8 +1,6 @@
 from base64 import b64encode
 from fasthtml.common import *
-from fasthtml.common import Div
 from typing import Any
-import json
 import logging
 
 from ocr_service import LabelOCRService
@@ -10,72 +8,110 @@ from verification import VerificationInput, VerificationResult, verify_all
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
-
+app, rt = fast_app(
+    pico=False,
+    hdrs=(
+        Script(src="node_modules/@uswds/uswds/dist/js/uswds-init.min.js"),
+        Link(rel="stylesheet", href="node_modules/@uswds/uswds/dist/css/uswds.min.css", type='text/css'),
+    ),
+)
 ocr_service = LabelOCRService()
 
-app, rt = fast_app(hdrs=(picolink,))
 
 def format_newlines(text:str) -> FT:
     return Div(P(line) for line in text.split("\n"))
 
 
-def hero_section() -> Div:
+def title_section() -> FT:
     return Div(
         H1("Alcohol Label Verification"),
-        P("Upload a label image and enter the expected details to verify compliance."),
-        cls="stack"
+        P("Upload a label image and enter the expected details to verify compliance.", cls="usa-hint"),
     )
 
 
 def input_fields_section(form_data: dict[str, str] | None = None):
     form_data = form_data or {}
     return Div(
-        H3("Product details"),
+        H2("Fields to verify"),
         Div(
-            Label("Brand name", Input(name="brand_name", value=form_data.get("brand_name", ""), placeholder="e.g., Riverbend Winery")),
-            Label("Product name / class", Input(name="product_name", value=form_data.get("product_name", ""), placeholder="e.g., Cabernet Sauvignon")),
+            Label(
+                "Brand name",
+                for_="brand_name_input",
+                cls="usa-label"
+            ),
+            Input(
+                    name="brand_name",
+                    id="brand_name_input",
+                    value=form_data.get("brand_name", ""),
+                    placeholder="e.g., Riverbend Winery",
+                    cls="usa-input"
+            ),
+            Label(
+                "Product name / class",
+                Input(
+                    name="product_name",
+                    value=form_data.get("product_name", ""),
+                    placeholder="e.g., Cabernet Sauvignon",
+                    cls="usa-input"
+                ),
+                cls="usa-label"
+            ),
             Label(
                 "Alcohol by volume (%)",
-                Input(name="abv", value=form_data.get("abv", ""), type="number", step="0.1", placeholder="e.g., 13.5")
+                Input(
+                    name="abv",
+                    value=form_data.get("abv", ""),
+                    type="number", step="0.1",
+                    placeholder="e.g., 13.5",
+                    cls="usa-input"
+                ),
+                cls="usa-label"
             ),
-            Label("Volume", Input(name="volume", value=form_data.get("volume", ""), placeholder="e.g., 750 ml, 12 fl oz, etc.")),
-            cls="stack"
+            Label(
+                "Volume",
+                Input(
+                    name="volume",
+                    value=form_data.get("volume", ""),
+                    placeholder="e.g., 750 ml, 12 fl oz, etc.",
+                    cls="usa-input"
+                ),
+                cls="usa-label"
+            ),
+            cls="usa-form-group"
         ),
-        cls="card stack"
     )
 
 
 def image_upload_section() -> FT:
     return Div(
-        H3("Label image"),
+        H2("Label"),
         Label(
-            "Upload image",
+            "Upload image (jpg or png)",
             Input(
                 name="label_image",
                 id="label-image-input",
                 type="file",
                 accept="image/*",
+                multiple=False,
                 required=True,
                 hx_post="/preview",
                 hx_trigger="change",
                 hx_target="#preview-container",
                 hx_swap="innerHTML",
                 hx_encoding="multipart/form-data",
+                cls="usa-file-input"
             )
-        ),
-        cls="card stack"
+        )
     )
 
 
 def image_preview_section() -> FT:
     return Div(
-        H3("Label preview"),
+        H2("Label preview"),
         Div(
-            Span("Preview will appear after selection.", id="preview-placeholder"),
+            Span("Preview will display after a label image is selected.", id="preview-placeholder"),
             id="preview-container",
-            cls="preview"
-        ),
-        cls="card stack"
+        )
     )
 
 
@@ -85,18 +121,17 @@ def results_section(content: FT | None = None, error: str | None = None, **attrs
     elif content:
         content = content
     else:
-        content=P("Results will appear here after you verify a label.")
+        content=P("Results will display after submitting an image and fields to verify.")
 
     return Div(
-        H3("Verification results"),
+        H2("Verification results"),
         content,
         id="results-container",
-        cls="card stack",
         **attrs,
     )
 
 
-def verification_results_detail(results: dict[str, VerificationResult]) -> Div:
+def verification_results_detail(results: dict[str, VerificationResult]) -> FT:
     """
     Render verification results as a styled table matching project guidelines.
     
@@ -110,7 +145,7 @@ def verification_results_detail(results: dict[str, VerificationResult]) -> Div:
     mismatches = sum(1 for result in results.values() if not result.match)
 
     if mismatches == 0:
-        result_title = "✅ Success! Label fully matches the inputs."
+        result_title = "✅ Success! Label fully verified."
     else:
         result_title = f"❌ Error: {mismatches} of {len(results)} fields don't match."
     
@@ -118,30 +153,31 @@ def verification_results_detail(results: dict[str, VerificationResult]) -> Div:
 
     for key, result in results.items():
         field_name = key.replace("_", " ").title()
-        icon = "✅" if result.match else "❌"
+        icon = "✅ Yes" if result.match else "❌ No"
 
         detail_rows.append(
             Tr(
                 Th(field_name, scope="row"),
-                Td(format_newlines(result.expected)),
                 Td(icon),
-                Td(format_newlines(f"{result.comment} {result.found if result.comment=="Normalized text match" else ""}")),
+                Td(format_newlines(result.expected)),
+                Td(format_newlines(result.comment)),
                 cls=f"check-item"
             )
         )
 
     return Div(
-        H4(result_title),
+        H3(result_title),
         Table(
             Thead(
                 Tr(
                     Th("Field", scope="col"),
-                    Th("Form input", scope="col"),
-                    Th("Found in label?", scope="col"),
+                    Th("Match?", scope="col"),
+                    Th("Expected text", scope="col"),
                     Th("Comment", scope="col"),
                 )
             ),
             Tbody(*detail_rows),
+            cls="usa-table"
         ),
     )
 
@@ -149,7 +185,7 @@ def layout(
     ocr_text: str | None = None,
     error: str | None = None,
     form_data_prefill: dict[str, str] | None = None,
-) -> Div:
+) -> FT:
 
     form_data_prefill = {
         "brand_name": "12345 Distillery",
@@ -158,14 +194,14 @@ def layout(
         "volume": "750 ml",
     }
 
-    return Div(
-        hero_section(),
+    return Body(
+        title_section(),
         Div(
             Div(
                 Form(
-                    input_fields_section(form_data=form_data_prefill),
                     image_upload_section(),
-                    Button("Verify label", type="submit"),
+                    input_fields_section(form_data=form_data_prefill),
+                    Button("Verify label", type="submit", cls="usa-button"),
                     action="/verify",
                     method="post",
                     enctype="multipart/form-data",
@@ -173,18 +209,19 @@ def layout(
                     hx_target="#results-container",
                     hx_swap="outerHTML",
                     hx_encoding="multipart/form-data",
-                    cls="stack"
                 ),
-                cls="column"
+                cls="column grid-col-5",
             ),
             Div(
                 image_preview_section(),
                 results_section(results=[P(ocr_text)] if ocr_text else None, error=error),
-                cls="column"
+                cls="column grid-col-fill"
             ),
-            cls="grid"
+            cls="grid grid-row grid-gap"
         ),
-        cls="page stack"
+        Script(src="node_modules/@uswds/uswds/dist/js/uswds.min.js"),
+        cls="grid-container",
+        style="margin: 10px;"
     )
 
 
@@ -198,14 +235,14 @@ async def preview(label_image: UploadFile | None = None):
     """HTMX endpoint to render an image preview when a file is selected."""
     if not label_image:
         return Div(
-            Span("Preview will appear after selection.", id="preview-placeholder"),
+            Span("Preview will display after a label image is selected.", id="preview-placeholder"),
             results_section(hx_swap_oob="true"),
         )
 
     content = await label_image.read()
     if not content:
         return Div(
-            Span("Preview will appear after selection.", id="preview-placeholder"),
+            Span("Preview will display after a label image is selected.", id="preview-placeholder"),
             results_section(hx_swap_oob="true"),
         )
 
