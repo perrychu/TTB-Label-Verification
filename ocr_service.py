@@ -56,7 +56,7 @@ class LabelOCRService:
         if credentials_file_path:
             return service_account.Credentials.from_service_account_file(credentials_file_path)
 
-        raise ValueError(f"No credentials found in {credentials_json_env} or {credentials_path}")
+        raise ValueError(f"No credentials found in {credentials_json_env} or {credentials_file_path}")
 
     def extract_text_from_file(self, file_path: str) -> str | None:
         """Load an image from disk and run OCR on its bytes.
