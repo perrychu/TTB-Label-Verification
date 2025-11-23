@@ -1,8 +1,8 @@
 from dataclasses import dataclass
 import logging
-import re
 
 from rapidfuzz import fuzz, process
+import regex
 
 logger = logging.getLogger(__name__)
 
@@ -29,8 +29,8 @@ def normalize_text(text:str) -> str:
         Lowercase string where punctuation becomes single spaces and whitespace is collapsed.
     """
     text = text.strip().lower()
-    text = re.sub(r"[.,\-()_\[\]]", " ", text) # Replace punctuation with single space
-    text = re.sub(r"\s+", " ", text) # Replace multiple spaces with a single space
+    text = regex.sub(r"[.,\-()_\[\]]", " ", text) # Replace punctuation with single space
+    text = regex.sub(r"\s+", " ", text) # Replace multiple spaces with a single space
     return text
 
 
@@ -85,8 +85,9 @@ def check_exact(target_text:str, source_text:str) -> VerificationResult:
             expected=target_text,
             comment="Target text is empty"
         )
-    
-    match = re.search(fr"\b{target_text}\b", source_text) is not None
+
+    #Check for whitespace instead of word boundaries (\b) due to '% ' not counting
+    match = regex.search(fr"(?<=^|\s){target_text}(?=$|\s)", source_text) is not None
 
     return VerificationResult(
         match=match,
@@ -114,7 +115,8 @@ def check_normalized(target_text:str, source_text:str) -> VerificationResult:
 
     target_text_norm = normalize_text(target_text)
     source_text_norm = normalize_text(source_text)
-    match = re.search(fr"\b{target_text_norm}\b", source_text_norm) is not None
+    #Check for whitespace instead of word boundaries (\b) due to '% ' not counting
+    match = regex.search(fr"(?<=^|\s){target_text_norm}(?=$|\s)", source_text_norm) is not None
 
     return VerificationResult(
         match=match,
