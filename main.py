@@ -60,21 +60,22 @@ def input_fields_section(form_data: dict[str, str] | None = None):
         Div(
             Label(
                 "Brand name",
-                for_="brand_name_input",
-                cls="usa-label"
-            ),
-            Input(
+                Input(
                     name="brand_name",
                     id="brand_name_input",
                     value=form_data.get("brand_name", ""),
                     placeholder="e.g., Riverbend Winery",
                     required=True,
-                    cls="usa-input"
+                cls="usa-input"
+                ),
+                cls="usa-label"
             ),
+            
             Label(
                 "Product type / class",
                 Input(
                     name="product_type",
+                    id="product_type_input",
                     value=form_data.get("product_type", ""),
                     placeholder="e.g., Cabernet Sauvignon",
                     required=True,
@@ -86,6 +87,7 @@ def input_fields_section(form_data: dict[str, str] | None = None):
                 "Alcohol by volume (%)",
                 Input(
                     name="abv",
+                    id="abv_input",
                     value=form_data.get("abv", ""),
                     type="number", step="0.1",
                     placeholder="e.g., 13.5",
@@ -96,8 +98,9 @@ def input_fields_section(form_data: dict[str, str] | None = None):
             ),
             Label(
                 "Volume",
-                Input(
+                 Input(
                     name="volume",
+                    id="volume_input",
                     value=form_data.get("volume", ""),
                     placeholder="e.g., 750 ml, 12 fl oz, etc.",
                     required=True,
@@ -105,6 +108,7 @@ def input_fields_section(form_data: dict[str, str] | None = None):
                 ),
                 cls="usa-label"
             ),
+           
             cls="usa-form-group"
         ),
     )
@@ -265,7 +269,7 @@ def get(
                     hx_swap="outerHTML",
                     hx_encoding="multipart/form-data",
                 ),
-                cls="column grid-col-5",
+                cls="column grid-col-4",
             ),
             Div(
                 image_preview_section(),
@@ -306,7 +310,7 @@ async def preview(label_image: UploadFile | None = None):
     encoded = b64encode(content).decode("ascii")
     data_url = f"data:{label_image.content_type};base64,{encoded}"
     return Div(
-        Img(src=data_url, cls="preview-img", style="max-width:100%; height:auto;"),
+        Img(src=data_url, cls="preview-img", style="max-width:500px; max-height:350px; width:auto;height:auto;"),
         results_section(hx_swap_oob="true"),
     )
 
