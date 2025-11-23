@@ -4,8 +4,8 @@ FastHTML web application that recreates a simplified Alcohol and Tobacco Tax and
 
 ## Highlights
 - **Comparison strategy** – 3-tier matching strategy with feedback enabling users to quickly & transparently evaluate output quality. Tier 1 is exact text match; Tier 2 is normalized match adjusting for capitalization, punctuation, and spacing variation; Tier 3 is fuzzy match. Best fuzzy match score and substring are shown as additional context for Tier 3 matches and non-matches. All matching strategies incorporate word boundaries to avoid spurious partial-token matches.
-- **User-friendly UX** – FastHTML + USWDS styles keep the layout simple; HTMX endpoints (`/preview`, `/verify`) avoid full page reloads. Outputs formatted to be easily interpretable.
-- **Extras** – Government Warning text is validated separately for heading and statutory paragraphs to handle varying formatting. Includes basic unit tests to verify logic / prevent regressions.
+- **User-friendly UX** – FastHTML with HTMX endpoints (`/preview`, `/verify`) are responsive and avoid full page reloads. Adopts common government website style using USWDS css commponents. Outputs formatted to be easily interpretable, accessibility validated with [ANDI](https://www.ssa.gov/accessibility/andi/help/install.html)
+- **Extras** – Government Warning heading and statutory paragraphs are checked individually to handle varying formatting. Includes basic unit tests to verify logic / prevent regressions.
 
 ## Local Setup
 1. **Install dependencies in virtual environment**
